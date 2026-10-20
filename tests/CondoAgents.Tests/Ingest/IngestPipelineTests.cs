@@ -67,10 +67,10 @@ public sealed class IngestPipelineTests
         var report = await pipeline.ScreenAsync(request, Ct);
 
         await Assert.ThrowsAsync<AttestationMismatchException>(
-            () => pipeline.IndexAsync(request, new Attestation("0000000000000000", "buyer", DateTimeOffset.UtcNow), Ct));
+            () => pipeline.IndexAsync(request, report, new Attestation("0000000000000000", "buyer", DateTimeOffset.UtcNow), Ct));
         Assert.Empty(index.Snapshot());
 
-        var result = await pipeline.IndexAsync(request, new Attestation(report.ScreeningHash, "buyer", DateTimeOffset.UtcNow), Ct);
+        var result = await pipeline.IndexAsync(request, report, new Attestation(report.ScreeningHash, "buyer", DateTimeOffset.UtcNow), Ct);
 
         Assert.True(result.ChunkCount > 0);
         Assert.All(index.Snapshot(), c => Assert.Equal("jardins-plateau", c.BuildingId));
@@ -86,8 +86,10 @@ public sealed class IngestPipelineTests
         var report = await pipeline.ScreenAsync(original, Ct);
         var edited = original with { OpenContent = () => new MemoryStream(Encoding.UTF8.GetBytes("Contact Mme Lucie Pham, unité 408.")) };
 
-        await Assert.ThrowsAsync<AttestationMismatchException>(
-            () => pipeline.IndexAsync(edited, new Attestation(report.ScreeningHash, "buyer", DateTimeOffset.UtcNow), Ct));
+        var ex = await Assert.ThrowsAsync<AttestationMismatchException>(
+            () => pipeline.IndexAsync(edited, report, new Attestation(report.ScreeningHash, "buyer", DateTimeOffset.UtcNow), Ct));
+
+        Assert.Contains("changed since it was screened", ex.Message, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -107,8 +109,8 @@ public sealed class IngestPipelineTests
         var report = await pipeline.ScreenAsync(request, Ct);
         var attestation = new Attestation(report.ScreeningHash, "buyer", DateTimeOffset.UtcNow);
 
-        await pipeline.IndexAsync(request, attestation, Ct);
-        await pipeline.IndexAsync(request, attestation, Ct);
+        await pipeline.IndexAsync(request, report, attestation, Ct);
+        await pipeline.IndexAsync(request, report, attestation, Ct);
         var afterTwice = index.Snapshot().Count;
         await pipeline.DeindexAsync("bylaws-2019", Ct);
 

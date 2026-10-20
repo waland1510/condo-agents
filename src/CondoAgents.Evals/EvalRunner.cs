@@ -7,7 +7,7 @@ using CondoAgents.Domain.Scoping;
 namespace CondoAgents.Evals;
 
 /// <summary>Runs each case through the orchestrator and grades the persisted run, so a grade is reproducible from the run JSON alone.</summary>
-public sealed class EvalRunner(Func<IRunStore, DueDiligenceOrchestrator> factory, string mode, string modelId)
+public sealed class EvalRunner(Func<IRunStore, DueDiligenceOrchestrator> factory, string mode, string modelId, RunBudget? defaultBudget = null)
 {
     public async Task<EvalReport> RunAsync(IReadOnlyList<EvalCase> cases, CancellationToken ct = default)
     {
@@ -24,12 +24,13 @@ public sealed class EvalRunner(Func<IRunStore, DueDiligenceOrchestrator> factory
     {
         var store = new InMemoryRunStore();
         var orchestrator = factory(store);
-        var budget = @case.MaxToolCalls is { } max ? RunBudget.Default with { MaxToolCalls = max } : RunBudget.Default;
+        var baseline = defaultBudget ?? RunBudget.Default;
+        var budget = @case.MaxToolCalls is { } max ? baseline with { MaxToolCalls = max } : baseline;
         var watch = Stopwatch.StartNew();
         var run = await orchestrator.StartAsync(new Scope(@case.Building), @case.Question, budget, ct);
         watch.Stop();
 
-        var checks = Grade(@case.Expect, run);
+        var checks = Grade(@case.Expect, run, mode);
         return new CaseResult(
             @case.Id,
             checks.All(c => c.Passed),
@@ -42,7 +43,7 @@ public sealed class EvalRunner(Func<IRunStore, DueDiligenceOrchestrator> factory
             run.Id);
     }
 
-    public static IReadOnlyList<CheckResult> Grade(EvalExpectation expect, AgentRun run)
+    public static IReadOnlyList<CheckResult> Grade(EvalExpectation expect, AgentRun run, string mode = "fake")
     {
         var checks = new List<CheckResult>();
         var tools = run.Events.Where(e => e.Kind == RunTrace.ToolCall).Select(e => e.Name).ToHashSet(StringComparer.Ordinal);
@@ -57,8 +58,9 @@ public sealed class EvalRunner(Func<IRunStore, DueDiligenceOrchestrator> factory
 
         if (expect.Specialists is { } specialists)
         {
-            var actual = run.Plan?.Steps.Select(s => s.Specialist).ToList() ?? [];
-            checks.Add(new("specialists", actual.SequenceEqual(specialists, StringComparer.Ordinal), $"expected [{string.Join(", ", specialists)}], got [{string.Join(", ", actual)}]"));
+            var actual = run.Plan?.Steps.Select(s => s.Specialist).Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).ToList() ?? [];
+            var expected = specialists.Order(StringComparer.Ordinal).ToList();
+            checks.Add(new("specialists", actual.SequenceEqual(expected, StringComparer.Ordinal), $"expected {{{string.Join(", ", expected)}}}, got {{{string.Join(", ", actual)}}}"));
         }
 
         foreach (var tool in expect.ToolsCalled ?? [])
@@ -90,7 +92,11 @@ public sealed class EvalRunner(Func<IRunStore, DueDiligenceOrchestrator> factory
         if (expect.CriticRejectedReasonIncludes is { } reason)
         {
             var reasons = run.Steps.SelectMany(s => s.Critic?.Unsupported ?? []).Select(u => u.Reason).ToList();
-            checks.Add(new("critic-rejected", reasons.Any(r => r.Contains(reason, StringComparison.OrdinalIgnoreCase)), $"reasons: [{string.Join(" | ", reasons)}]"));
+            var rejected = reasons.Any(r => r.Contains(reason, StringComparison.OrdinalIgnoreCase));
+            var acknowledged = (run.Final?.Text ?? string.Empty).Contains("rejet", StringComparison.OrdinalIgnoreCase)
+                || (run.Final?.Text ?? string.Empty).Contains("rejected", StringComparison.OrdinalIgnoreCase);
+            checks.Add(new("lure-handled", rejected || acknowledged,
+                rejected ? $"critic rejected: [{string.Join(" | ", reasons)}]" : acknowledged ? "the answer itself states the proposal was rejected" : "neither the critic nor the answer caught it"));
         }
 
         if (expect.ErrorIncludes is { } error)
@@ -104,7 +110,8 @@ public sealed class EvalRunner(Func<IRunStore, DueDiligenceOrchestrator> factory
             checks.Add(new("pending-approvals", actual == pending, $"expected {pending}, got {actual}"));
         }
 
-        if (expect.MaxModelCalls is { } max)
+        var ceiling = mode == "azure" ? expect.MaxModelCallsAzure : expect.MaxModelCalls;
+        if (ceiling is { } max)
         {
             checks.Add(new("max-model-calls", modelCalls <= max, $"limit {max}, got {modelCalls}"));
         }

@@ -3,6 +3,7 @@ using CondoAgents.Agents.Orchestration;
 using CondoAgents.Api;
 using CondoAgents.Api.Configuration;
 using CondoAgents.Clients;
+using CondoAgents.Clients.Azure;
 using CondoAgents.Corpus;
 using CondoAgents.Ingest;
 
@@ -22,14 +23,19 @@ builder.Services.AddSingleton<IValidateOptions<AiOptions>, AiOptionsValidator>()
 var ai = builder.Configuration.GetSection(AiOptions.Section).Get<AiOptions>() ?? new AiOptions();
 if (ai.UseAzure)
 {
-    throw new NotSupportedException("Azure clients are not wired yet; run with Ai:UseAzure=false in Development.");
+    builder.Services.AddAzureClients(ai.ToAzureOptions());
+    builder.Services.AddSingleton<IRoleAdjudicator>(sp => new ModelRoleAdjudicator(sp.GetRequiredService<IChatClient>()));
+}
+else
+{
+    builder.Services.AddFakeClients();
+    builder.Services.AddSingleton<IChatClient, ScriptedChatClient>();
 }
 
-builder.Services.AddFakeClients();
 builder.Services.AddSingleton<IngestPipeline>();
-builder.Services.AddSingleton<IChatClient, ScriptedChatClient>();
 builder.Services.AddSingleton<IRunStore>(new FileRunStore(builder.Configuration["Runs:Path"] ?? Path.Combine(builder.Environment.ContentRootPath, "runs")));
 builder.Services.AddSingleton<DueDiligenceOrchestrator>();
+builder.Services.AddSingleton<RunLauncher>();
 
 builder.Services.AddOpenTelemetry()
     .WithTracing(t => t.AddSource(Telemetry.ServiceName).AddAspNetCoreInstrumentation().AddHttpClientInstrumentation().AddOtlpExporter())
@@ -37,14 +43,21 @@ builder.Services.AddOpenTelemetry()
 
 var app = builder.Build();
 
+if (app.Services.GetService<AzureSearchIndex>() is { } azureIndex)
+{
+    await azureIndex.EnsureIndexAsync();
+}
+
 var dataRoot = app.Configuration["Corpus:Path"] ?? CorpusLoader.FindDataRoot(app.Environment.ContentRootPath);
-if (dataRoot is not null)
+if (dataRoot is not null && app.Configuration.GetValue("Corpus:SeedOnStartup", true))
 {
     var results = await CorpusIngestor.IngestAllAsync(
         dataRoot, app.Services.GetRequiredService<IngestPipeline>(), app.Services.GetRequiredService<IIndexWriter>());
     app.Logger.LogInformation("Seeded {Documents} documents, {Chunks} chunks from {DataRoot}", results.Count, results.Sum(r => r.ChunkCount), dataRoot);
 }
 
+app.UseDefaultFiles();
+app.UseStaticFiles();
 app.MapRuns();
 
 app.MapGet("/health", () => Results.Ok(new { status = "ok" }));

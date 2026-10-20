@@ -51,7 +51,7 @@ public sealed class OrchestratorTests
         var step = Assert.Single(run.Steps);
         Assert.Equal(DueDiligenceOrchestrator.MaxAttemptsPerStep, step.Attempts);
         Assert.False(step.Critic!.Pass);
-        Assert.Contains(step.Critic.Unsupported, u => u.Reason.Contains("rejected", StringComparison.Ordinal));
+        Assert.Contains(step.Critic.Unsupported!, u => u.Reason.Contains("rejected", StringComparison.Ordinal));
         Assert.Empty(step.KeptClaims);
         Assert.DoesNotContain("installed", run.Final!.Text, StringComparison.Ordinal);
         Assert.NotEmpty(run.Final.Dropped);

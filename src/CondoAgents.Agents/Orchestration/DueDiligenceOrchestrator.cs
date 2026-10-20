@@ -27,11 +27,21 @@ public sealed class DueDiligenceOrchestrator(
 
     public async Task<AgentRun> StartAsync(Scope scope, string question, RunBudget? budget = null, CancellationToken ct = default)
     {
+        var run = await CreateAsync(scope, question, budget, ct);
+        return await ContinueAsync(run, ct);
+    }
+
+    /// <summary>Persists a run before any work so a caller can hand it to a background task and poll it by id.</summary>
+    public async Task<AgentRun> CreateAsync(Scope scope, string question, RunBudget? budget = null, CancellationToken ct = default)
+    {
         ScopeFilter.Build(scope);
         var run = new AgentRun { Id = AgentRun.NewId(), Scope = scope, Question = question, Budget = budget ?? RunBudget.Default };
         await Persist(run, ct);
-        return await ContinueAsync(run, ct);
+        return run;
     }
+
+    public async Task<AgentRun> ReloadAsync(string runId, CancellationToken ct = default)
+        => await store.LoadAsync(runId, ct) ?? throw new KeyNotFoundException($"Run '{runId}' not found.");
 
     public async Task<AgentRun> DecideAsync(string runId, string approvalId, bool approved, string decidedBy, CancellationToken ct = default)
     {
@@ -99,7 +109,7 @@ public sealed class DueDiligenceOrchestrator(
             run.Status = run.Approvals.Any(a => a.Approved == false) ? RunStatus.Rejected : RunStatus.Completed;
             return await Finish(run, trace, baseline, ct);
         }
-        catch (Exception ex) when (ex is BudgetExceededException or InvalidPlanException or OperationCanceledException)
+        catch (Exception ex) when (ex is BudgetExceededException or InvalidPlanException or OperationCanceledException or HttpRequestException or InvalidOperationException)
         {
             run.Status = RunStatus.Failed;
             run.Error = ex.Message;
@@ -112,7 +122,7 @@ public sealed class DueDiligenceOrchestrator(
         var planner = AgentFactory.Create(model, "planner", Prompts.Planner, [], run.Budget, trace);
         var session = await planner.CreateSessionAsync(ct);
         var response = await planner.RunCheckedAsync<Plan>(run.Question, session, trace, ct);
-        var plan = response.Result;
+        var plan = response.Result with { Steps = (response.Result.Steps ?? []).Select(st => st with { DependsOn = st.DependsOn ?? [] }).ToList() };
         plan.Validate();
         return plan;
     }
@@ -125,7 +135,7 @@ public sealed class DueDiligenceOrchestrator(
         {
             Specialists.Finance => toolbox.FinanceOnly(),
             Specialists.Legal => toolbox.ReferenceOnly(),
-            _ => [.. toolbox.All(), .. toolbox.Irreversible()],
+            _ => step.ContactSyndicate ? [.. toolbox.All(), .. toolbox.Irreversible()] : toolbox.All(),
         };
         var agent = AgentFactory.Create(model, step.Specialist, Prompts.Specialist(step.Specialist), tools, run.Budget, trace);
 
@@ -190,7 +200,7 @@ public sealed class DueDiligenceOrchestrator(
             return await RunStepAsync(run, step, record, trace, ct);
         }
 
-        record.KeptClaims = Claims.Split(answer).Where(c => c.Labels.Count > 0 && !verdict.Unsupported.Any(u => u.Claim == c.Text)).ToList();
+        record.KeptClaims = Claims.Split(answer).Where(c => c.Labels.Count > 0 && !verdict.Unsupported!.Any(u => u.Claim == c.Text)).ToList();
         record.Completed = true;
         return false;
     }
@@ -217,7 +227,8 @@ public sealed class DueDiligenceOrchestrator(
             evidence = evidence.Select((e, i) => new { label = RetrievedChunk.EvidenceLabel(i), e.DocumentId, e.Text }),
         }, RunJson.Options);
         var response = await critic.RunCheckedAsync<CriticVerdict>(payload, session, trace, ct);
-        return response.Result;
+        var verdict = response.Result.Normalized();
+        return verdict.Unsupported!.Count == 0 ? verdict with { Pass = true } : verdict;
     }
 
     private static string StepPrompt(AgentRun run, PlanStep step, StepRecord record)
@@ -231,7 +242,7 @@ public sealed class DueDiligenceOrchestrator(
         if (record.Critic is { Pass: false } critic)
         {
             parts.Add("A reviewer rejected these claims from your previous attempt; fix or drop them: " +
-                      string.Join(" | ", critic.Unsupported.Select(u => $"{u.Claim} ({u.Reason})")));
+                      string.Join(" | ", (critic.Unsupported ?? []).Select(u => $"{u.Claim} ({u.Reason})")));
         }
 
         return string.Join("\n", parts);
@@ -244,7 +255,10 @@ public sealed class DueDiligenceOrchestrator(
             var start = text.IndexOf('{');
             var end = text.LastIndexOf('}');
             var json = start >= 0 && end > start ? text[start..(end + 1)] : text;
-            return JsonSerializer.Deserialize<AgentAnswer>(json, RunJson.Options) ?? new AgentAnswer(AgentAnswer.KindClarification, text, []);
+            var parsed = JsonSerializer.Deserialize<AgentAnswer>(json, RunJson.Options);
+            return parsed is null
+                ? new AgentAnswer(AgentAnswer.KindClarification, text, [])
+                : parsed with { Kind = parsed.Kind ?? AgentAnswer.KindAnswer, Text = parsed.Text ?? "", Evidence = parsed.Evidence ?? [] };
         }
         catch (JsonException)
         {

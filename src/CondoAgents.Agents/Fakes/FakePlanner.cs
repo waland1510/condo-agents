@@ -14,6 +14,7 @@ public static class FakePlanner
         var q = question.ToLowerInvariant();
         var steps = new List<object>();
         var broad = q.Contains("safe") || q.Contains("should i buy") || q.Contains("risk") || q.Contains("overall");
+        var contact = q.Contains("contact the syndicate");
 
         if (broad || FinanceWords.Any(q.Contains))
         {
@@ -22,7 +23,7 @@ public static class FakePlanner
 
         if (broad || DocumentWords.Any(q.Contains))
         {
-            steps.Add(new { id = "documents", specialist = "documents", question = broad ? "What decisions, disputes, litigation and bylaw changes affect a buyer?" : question, dependsOn = Array.Empty<string>() });
+            steps.Add(new { id = "documents", specialist = "documents", question = broad ? "What decisions, disputes, litigation and bylaw changes affect a buyer?" : question, dependsOn = Array.Empty<string>(), contactSyndicate = contact });
         }
 
         if (broad || LegalWords.Any(q.Contains))
@@ -32,7 +33,7 @@ public static class FakePlanner
 
         if (steps.Count == 0)
         {
-            steps.Add(new { id = "documents", specialist = "documents", question, dependsOn = Array.Empty<string>() });
+            steps.Add(new { id = "documents", specialist = "documents", question, dependsOn = Array.Empty<string>(), contactSyndicate = contact });
         }
 
         return JsonSerializer.Serialize(new { goal = question, steps });

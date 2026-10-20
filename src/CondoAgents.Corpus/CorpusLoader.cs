@@ -45,7 +45,7 @@ public static class CorpusLoader
     {
         var text = File.ReadAllText(Path.Combine(dataRoot, document.File));
         return ParagraphChunker.Split(text).Select((chunk, i) => new IndexedChunk(
-            ChunkId: $"{document.Id}#{i + 1}",
+            ChunkId: $"{document.Id}__{i + 1}",
             DocumentId: document.Id,
             Title: document.Title,
             Corpus: corpus,

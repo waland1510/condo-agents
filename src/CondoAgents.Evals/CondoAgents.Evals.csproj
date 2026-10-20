@@ -5,6 +5,7 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="../CondoAgents.Agents/CondoAgents.Agents.csproj" />
+    <ProjectReference Include="../CondoAgents.Clients.Azure/CondoAgents.Clients.Azure.csproj" />
     <ProjectReference Include="../CondoAgents.Corpus/CondoAgents.Corpus.csproj" />
     <ProjectReference Include="../CondoAgents.Ingest/CondoAgents.Ingest.csproj" />
   </ItemGroup>

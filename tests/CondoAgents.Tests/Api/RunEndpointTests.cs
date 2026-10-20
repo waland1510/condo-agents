@@ -34,8 +34,9 @@ public sealed class RunEndpointTests
             var json = await fetched.Content.ReadAsStringAsync(Ct);
 
             Assert.Equal(HttpStatusCode.OK, fetched.StatusCode);
-            Assert.Equal("Completed", JsonDocument.Parse(json).RootElement.GetProperty("status").GetString());
-            Assert.True(JsonDocument.Parse(json).RootElement.GetProperty("events").GetArrayLength() > 0);
+            var root = JsonDocument.Parse(json).RootElement.GetProperty("run");
+            Assert.Equal("Completed", root.GetProperty("status").GetString());
+            Assert.True(root.GetProperty("events").GetArrayLength() > 0);
         }
         finally
         {
@@ -81,6 +82,57 @@ public sealed class RunEndpointTests
             Assert.Equal(HttpStatusCode.OK, decided.StatusCode);
             Assert.Equal(RunStatus.Completed, (await decided.Content.ReadFromJsonAsync<AgentRun>(RunJson.Options, Ct))!.Status);
             Assert.Equal(HttpStatusCode.Conflict, again.StatusCode);
+        }
+        finally
+        {
+            dir.Delete(recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task A_background_run_is_accepted_immediately_and_finishes_on_its_own()
+    {
+        var dir = Directory.CreateTempSubdirectory();
+        try
+        {
+            using var factory = Factory(dir.FullName);
+            using var client = factory.CreateClient();
+
+            var accepted = await client.PostAsJsonAsync("/buildings/jardins-plateau/runs?background=true", new StartRunRequest("What are the monthly fees?"), Ct);
+            Assert.Equal(HttpStatusCode.Accepted, accepted.StatusCode);
+            var run = (await accepted.Content.ReadFromJsonAsync<AgentRun>(RunJson.Options, Ct))!;
+
+            string status = "";
+            for (var i = 0; i < 100 && status != "Completed"; i++)
+            {
+                await Task.Delay(50, Ct);
+                var json = await client.GetStringAsync(new Uri($"/runs/{run.Id}", UriKind.Relative), Ct);
+                status = JsonDocument.Parse(json).RootElement.GetProperty("run").GetProperty("status").GetString()!;
+            }
+
+            Assert.Equal("Completed", status);
+        }
+        finally
+        {
+            dir.Delete(recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task The_page_and_the_building_list_are_served()
+    {
+        var dir = Directory.CreateTempSubdirectory();
+        try
+        {
+            using var factory = Factory(dir.FullName);
+            using var client = factory.CreateClient();
+
+            var page = await client.GetAsync(new Uri("/", UriKind.Relative), Ct);
+            var buildings = await client.GetStringAsync(new Uri("/buildings", UriKind.Relative), Ct);
+
+            Assert.Equal(HttpStatusCode.OK, page.StatusCode);
+            Assert.Contains("condo-agents", await page.Content.ReadAsStringAsync(Ct), StringComparison.Ordinal);
+            Assert.Contains("jardins-plateau", buildings, StringComparison.Ordinal);
         }
         finally
         {

@@ -10,7 +10,7 @@ using Microsoft.Extensions.Logging;
 
 namespace CondoAgents.Ingest;
 
-/// <summary>Fixed order: crack, translate, detect, adjudicate, redact, hash. Indexing re-screens and refuses when the attestation hash no longer matches.</summary>
+/// <summary>Fixed order: crack, translate, detect, adjudicate, redact, hash. Indexing takes the screened report and refuses when the attestation or the source bytes no longer match; it never re-screens, because adjudication is model-backed and not byte-stable.</summary>
 public sealed partial class IngestPipeline(
     IDocumentTextExtractor extractor,
     IDocumentTranslator translator,
@@ -27,6 +27,7 @@ public sealed partial class IngestPipeline(
         activity?.SetTag("document.id", request.DocumentId);
         ScopeFilter.Build(request.Scope);
 
+        var sourceHash = await HashSourceAsync(request, ct);
         await using var content = request.OpenContent();
         var pages = await extractor.ExtractAsync(content, request.FileName, ct);
         var text = string.Join("\f", pages.Select(p => p.Text));
@@ -47,7 +48,7 @@ public sealed partial class IngestPipeline(
         }).ToList();
 
         var redacted = Redactor.Apply(translation.Text, findings);
-        var report = new ScreeningReport(request.DocumentId, translation.SourceLanguage, findings, redacted, Hash(request.DocumentId, redacted));
+        var report = new ScreeningReport(request.DocumentId, translation.SourceLanguage, findings, redacted, Hash(request.DocumentId, redacted), sourceHash);
 
         Log.Screened(logger, request.DocumentId, findings.Count, findings.Count(f => f.Redact), report.ScreeningHash);
         activity?.SetTag("pii.findings", findings.Count);
@@ -55,21 +56,27 @@ public sealed partial class IngestPipeline(
         return report;
     }
 
-    public async Task<IngestResult> IndexAsync(IngestRequest request, Attestation attestation, CancellationToken ct = default)
+    public async Task<IngestResult> IndexAsync(IngestRequest request, ScreeningReport report, Attestation attestation, CancellationToken ct = default)
     {
         using var activity = Telemetry.Source.StartActivity("ingest.index");
         activity?.SetTag("document.id", request.DocumentId);
 
-        var report = await ScreenAsync(request, ct);
-        if (!string.Equals(report.ScreeningHash, attestation.ScreeningHash, StringComparison.Ordinal))
+        if (report.DocumentId != request.DocumentId || !string.Equals(report.ScreeningHash, attestation.ScreeningHash, StringComparison.Ordinal))
         {
             throw new AttestationMismatchException(
-                $"Attestation for '{request.DocumentId}' covers hash {attestation.ScreeningHash}, but the document now screens as {report.ScreeningHash}.");
+                $"Attestation for '{request.DocumentId}' covers hash {attestation.ScreeningHash}, but the screening report is {report.ScreeningHash}.");
+        }
+
+        var sourceHash = await HashSourceAsync(request, ct);
+        if (!string.Equals(report.SourceHash, sourceHash, StringComparison.Ordinal))
+        {
+            throw new AttestationMismatchException(
+                $"Source for '{request.DocumentId}' changed since it was screened ({report.SourceHash} → {sourceHash}); screen it again.");
         }
 
         var chunks = ParagraphChunker.Split(report.RedactedText)
             .Select((chunk, i) => new IndexedChunk(
-                ChunkId: $"{request.DocumentId}#{i + 1}",
+                ChunkId: $"{request.DocumentId}__{i + 1}",
                 DocumentId: request.DocumentId,
                 Title: request.Title,
                 Corpus: ScopeFilter.BuildingCorpus,
@@ -93,6 +100,13 @@ public sealed partial class IngestPipeline(
         var start = Math.Max(0, offset - ContextRadius);
         var end = Math.Min(text.Length, offset + length + ContextRadius);
         return text[start..end];
+    }
+
+    private static async Task<string> HashSourceAsync(IngestRequest request, CancellationToken ct)
+    {
+        await using var content = request.OpenContent();
+        var bytes = await SHA256.HashDataAsync(content, ct);
+        return Convert.ToHexString(bytes)[..16].ToLowerInvariant();
     }
 
     private static string Hash(string documentId, string redactedText)

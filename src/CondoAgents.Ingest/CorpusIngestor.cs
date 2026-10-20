@@ -25,7 +25,7 @@ public static class CorpusIngestor
                     scope, document.Id, document.Title, Path.GetFileName(document.File), document.Year,
                     () => File.OpenRead(Path.Combine(dataRoot, document.File)));
                 var report = await pipeline.ScreenAsync(request, ct);
-                results.Add(await pipeline.IndexAsync(request, new Attestation(report.ScreeningHash, SeedAttester, DateTimeOffset.UtcNow), ct));
+                results.Add(await pipeline.IndexAsync(request, report, new Attestation(report.ScreeningHash, SeedAttester, DateTimeOffset.UtcNow), ct));
             }
         }
 
@@ -34,7 +34,7 @@ public static class CorpusIngestor
             var text = await File.ReadAllTextAsync(Path.Combine(dataRoot, document.File), ct);
             var chunks = ParagraphChunker.Split(text)
                 .Select((chunk, i) => new IndexedChunk(
-                    $"{document.Id}#{i + 1}", document.Id, document.Title, ScopeFilter.ReferenceCorpus, null, chunk.Text, chunk.Page, true, document.Year))
+                    $"{document.Id}__{i + 1}", document.Id, document.Title, ScopeFilter.ReferenceCorpus, null, chunk.Text, chunk.Page, true, document.Year))
                 .ToList();
             await indexWriter.UpsertAsync(chunks, ct);
             results.Add(new IngestResult(document.Id, chunks.Count, 0));

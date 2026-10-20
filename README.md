@@ -53,7 +53,10 @@ flowchart TD
    an irreversible tool pauses the run, the session is serialized to disk,
    and a different process resumes it after the decision.
 5. [evals/results/latest.md](evals/results/latest.md): eight trajectory
-   cases graded on the run record, not on prose.
+   cases graded on the run record, not on prose, and
+   [evals/results/azure-20261020.md](evals/results/azure-20261020.md): the
+   same cases against `gpt-5-mini`, six of eight passing, with the two
+   cost failures explained in ADR 9.
    [docs/adr/0008](docs/adr/0008-trajectory-evals-as-a-ci-gate.md) records
    the defect the first run caught.
 
@@ -69,13 +72,17 @@ roles fail closed).
 dotnet test --solution CondoAgents.slnx                      # 72 tests, no network
 dotnet run --project src/CondoAgents.Evals                   # trajectory evals, writes evals/results/
 dotnet run --project src/CondoAgents.Cli -- ask jardins-plateau "Is this condo safe to buy overall?"
-dotnet run --project src/CondoAgents.Api                     # POST /buildings/{id}/runs, GET /runs/{id}, POST /runs/{id}/approvals/{id}
+dotnet run --project src/CondoAgents.Api                     # http://localhost:5027 — ask, watch the trajectory, approve or reject
 dotnet run --project src/CondoAgents.Mcp -- --building jardins-plateau   # MCP server over stdio
 ```
 
-The CLI prints the trajectory as it happens, then the plan, the attempts
-per step, the critic's verdicts, the kept claims with citations and the
-dropped claims. A run that pauses prints the `approve` command to resume it.
+The page served by the API starts a run in the background and polls it:
+the plan, every model and tool call as it is recorded, the critic's
+verdicts, pending approvals with approve and reject buttons, and the final
+answer with citations and dropped claims. The same data is available as
+JSON: `POST /buildings/{id}/runs`, `GET /runs/{id}`,
+`POST /runs/{id}/approvals/{id}`. The CLI prints the same trajectory to the
+terminal and, for a paused run, the `approve` command that resumes it.
 
 The MCP server exposes the same scoped tools plus `ask_due_diligence` to
 Claude Desktop, Copilot or any MCP client. The building is a server
@@ -85,21 +92,40 @@ Outside `Development` the API refuses to boot on fakes
 (`Ai:RequireRealDependencies`), so a half-configured deployment fails
 loudly instead of serving canned answers behind a healthy probe.
 
-## What is real and what is fake
+## Fake mode and Azure mode
 
-The agent layer, the orchestration, the gates, the budgets, the approval
-flow, the persistence and the evals are real code running through the
-Microsoft Agent Framework. The model, the retriever, the PII detector and
-the role adjudicator are deterministic fakes
+Everything above the client interfaces is the same code in both modes. In
+fake mode the model, retriever, PII detector and role adjudicator are
+deterministic stand-ins
 ([ScriptedChatClient](src/CondoAgents.Agents/Fakes/ScriptedChatClient.cs),
 [FakePlanner](src/CondoAgents.Agents/Fakes/FakePlanner.cs),
 [FakeCritic](src/CondoAgents.Agents/Fakes/FakeCritic.cs),
-[InMemoryRetrievalClient](src/CondoAgents.Clients/Fakes/InMemoryRetrievalClient.cs)).
-The fake model searches with the question's words and quotes what it gets
-back, so answers read like excerpts; the point of the fakes is that every
-boundary and every eval means the same thing offline as it will against
-Azure. Wiring the real clients (Foundry, AI Search, AI Language, Content
-Safety) behind the existing interfaces is step 9 of the [plan](docs/plan.md).
+[InMemoryRetrievalClient](src/CondoAgents.Clients/Fakes/InMemoryRetrievalClient.cs)):
+the fake model searches with the question's words and quotes what it gets
+back, so answers read like excerpts, and every test and eval is
+deterministic.
+
+Azure mode ([ADR 9](docs/adr/0009-real-azure-clients-behind-the-same-interfaces.md))
+uses Foundry `gpt-5-mini` and `text-embedding-3-large`, a push-mode AI
+Search index, AI Language PII detection, Content Safety Prompt Shields and
+a model-backed role adjudicator. Entra credentials only, no keys. On a
+shared Search service the app refuses any index name outside its own
+`condo-agents-` prefix and creates no indexer, skillset or role assignment.
+Document translation and cracking stay on fakes because both need blob
+storage, which this app deliberately does not own.
+
+```bash
+export CONDO_EVAL_MODE=azure \
+  Ai__FoundryEndpoint=https://<account>.services.ai.azure.com \
+  Ai__ChatDeployment=gpt-5-mini Ai__EmbeddingDeployment=text-embedding-3-large \
+  Ai__SearchEndpoint=https://<service>.search.windows.net Ai__SearchIndexName=condo-agents-chunks \
+  Ai__LanguageEndpoint=https://<account>.cognitiveservices.azure.com \
+  Ai__AzureCliSubscription="<subscription in the tenant that owns the resources>"
+dotnet run --project src/CondoAgents.Evals            # writes evals/results/azure-<date>.md
+```
+
+The same variables with `Ai__UseAzure=true` switch the API; outside
+`Development` it refuses to boot without them.
 
 ## Layout
 

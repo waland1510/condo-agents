@@ -25,10 +25,18 @@ public sealed record UnsupportedClaim(
     [property: JsonPropertyName("claim")] string Claim,
     [property: JsonPropertyName("reason")] string Reason);
 
+/// <summary>A model may omit an empty array; Normalized never returns null lists, and a missing unsupported list with pass=false is treated as "nothing specific", which keeps the claims.</summary>
 public sealed record CriticVerdict(
     [property: JsonPropertyName("pass")] bool Pass,
-    [property: JsonPropertyName("supported")] IReadOnlyList<string> Supported,
-    [property: JsonPropertyName("unsupported")] IReadOnlyList<UnsupportedClaim> Unsupported);
+    [property: JsonPropertyName("supported")] IReadOnlyList<string>? Supported,
+    [property: JsonPropertyName("unsupported")] IReadOnlyList<UnsupportedClaim>? Unsupported)
+{
+    public CriticVerdict Normalized() => this with
+    {
+        Supported = Supported ?? [],
+        Unsupported = (Unsupported ?? []).Where(u => !string.IsNullOrWhiteSpace(u?.Claim)).Select(u => u with { Reason = u.Reason ?? "" }).ToList(),
+    };
+}
 
 public sealed record PendingApproval(
     string Id,

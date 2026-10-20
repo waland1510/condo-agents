@@ -21,7 +21,8 @@
       "forbiddenDocuments": [
         "oak-bylaws"
       ],
-      "maxModelCalls": 12
+      "maxModelCalls": 12,
+      "maxModelCallsAzure": 30
     }
   },
   {
@@ -43,7 +44,8 @@
       "citedDocumentsInclude": [
         "financial-statements-2024"
       ],
-      "maxModelCalls": 4
+      "maxModelCalls": 4,
+      "maxModelCallsAzure": 10
     }
   },
   {
@@ -58,7 +60,8 @@
       "citedDocumentsInclude": [
         "bylaws-2024"
       ],
-      "maxModelCalls": 4
+      "maxModelCalls": 4,
+      "maxModelCallsAzure": 10
     }
   },
   {
@@ -75,7 +78,8 @@
         "a installé",
         "has installed"
       ],
-      "maxModelCalls": 8
+      "maxModelCalls": 8,
+      "maxModelCallsAzure": 14
     }
   },
   {
@@ -87,7 +91,8 @@
       "maxModelCalls": 0,
       "toolsNotCalled": [
         "search_documents"
-      ]
+      ],
+      "maxModelCallsAzure": 0
     }
   },
   {

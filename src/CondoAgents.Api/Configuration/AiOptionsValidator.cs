@@ -21,7 +21,10 @@ public sealed class AiOptionsValidator : IValidateOptions<AiOptions>
             Require(failures, nameof(options.SearchEndpoint), options.SearchEndpoint);
             Require(failures, nameof(options.SearchIndexName), options.SearchIndexName);
             Require(failures, nameof(options.LanguageEndpoint), options.LanguageEndpoint);
-            Require(failures, nameof(options.BlobServiceUri), options.BlobServiceUri);
+            if (!options.SearchIndexName.StartsWith(Clients.Azure.AzureOptions.RequiredIndexPrefix, StringComparison.Ordinal))
+            {
+                failures.Add($"Ai:SearchIndexName must start with '{Clients.Azure.AzureOptions.RequiredIndexPrefix}' so this app can never read or write another workload's index.");
+            }
         }
 
         return failures.Count == 0 ? ValidateOptionsResult.Success : ValidateOptionsResult.Fail(failures);

@@ -1,3 +1,5 @@
+using CondoAgents.Clients.Azure;
+
 namespace CondoAgents.Api.Configuration;
 
 public sealed class AiOptions
@@ -23,5 +25,11 @@ public sealed class AiOptions
 
     public string ContentSafetyEndpoint { get; set; } = "";
 
-    public string BlobServiceUri { get; set; } = "";
+    public string? TenantId { get; set; }
+
+    /// <summary>Local development only: pins the Azure CLI credential to the subscription whose tenant owns the resources.</summary>
+    public string? AzureCliSubscription { get; set; }
+
+    public AzureOptions ToAzureOptions() => new(
+        FoundryEndpoint, ChatDeployment, EmbeddingDeployment, SearchEndpoint, SearchIndexName, LanguageEndpoint, ContentSafetyEndpoint, TenantId, AzureCliSubscription);
 }

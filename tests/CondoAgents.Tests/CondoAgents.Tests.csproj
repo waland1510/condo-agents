@@ -11,6 +11,7 @@
     <ProjectReference Include="../../src/CondoAgents.Agents/CondoAgents.Agents.csproj" />
     <ProjectReference Include="../../src/CondoAgents.Evals/CondoAgents.Evals.csproj" />
     <ProjectReference Include="../../src/CondoAgents.Mcp/CondoAgents.Mcp.csproj" />
+    <ProjectReference Include="../../src/CondoAgents.Clients.Azure/CondoAgents.Clients.Azure.csproj" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />

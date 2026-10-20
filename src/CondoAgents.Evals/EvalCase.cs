@@ -22,7 +22,8 @@ public sealed record EvalExpectation(
     string? CriticRejectedReasonIncludes = null,
     string? ErrorIncludes = null,
     int? PendingApprovals = null,
-    int? MaxModelCalls = null);
+    int? MaxModelCalls = null,
+    int? MaxModelCallsAzure = null);
 
 public static class EvalCases
 {

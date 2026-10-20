@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>condo-agents</title>
+<style>
+  :root { --bg:#fafaf7; --fg:#1d1d1b; --muted:#6b6b66; --line:#e3e2dc; --accent:#2d5b9a; --ok:#2b7a4b; --warn:#a05a00; --bad:#a3322c; --card:#fff; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#161614; --fg:#ebebe6; --muted:#9a9a93; --line:#2e2e2a; --accent:#7fa7e0; --ok:#6cc08b; --warn:#e0a24a; --bad:#e07a74; --card:#1f1f1c; } }
+  * { box-sizing:border-box }
+  body { margin:0; background:var(--bg); color:var(--fg); font:15px/1.5 -apple-system, "Segoe UI", Roboto, sans-serif; }
+  main { max-width:1080px; margin:0 auto; padding:24px 16px 64px; }
+  h1 { font-size:20px; margin:0 0 4px } h1 small { color:var(--muted); font-weight:400; margin-left:8px }
+  .sub { color:var(--muted); margin:0 0 20px }
+  form { display:grid; grid-template-columns: 220px 1fr auto; gap:8px; align-items:center }
+  select, input, button { font:inherit; padding:8px 10px; border:1px solid var(--line); border-radius:6px; background:var(--card); color:var(--fg) }
+  button { cursor:pointer } button.primary { background:var(--accent); color:#fff; border-color:var(--accent) }
+  .chips { display:flex; flex-wrap:wrap; gap:6px; margin:10px 0 0 } .chips button { font-size:13px; padding:4px 8px }
+  .grid { display:grid; grid-template-columns: 1fr 1fr; gap:16px; margin-top:20px }
+  @media (max-width: 760px) { form, .grid { grid-template-columns: 1fr } }
+  section { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:14px 16px; min-height:80px }
+  section h2 { font-size:13px; text-transform:uppercase; letter-spacing:.04em; color:var(--muted); margin:0 0 10px }
+  .status { font-weight:600 } .Completed{color:var(--ok)} .AwaitingApproval{color:var(--warn)} .Failed,.Rejected,.Refused{color:var(--bad)} .Running,.Planning{color:var(--accent)}
+  table { width:100%; border-collapse:collapse; font-size:13px } td { padding:3px 6px 3px 0; vertical-align:top; border-top:1px solid var(--line) } td.k { color:var(--muted); white-space:nowrap } td.d { color:var(--muted); word-break:break-word }
+  .plan li { margin:2px 0 } .ok{color:var(--ok)} .warn{color:var(--warn)} .bad{color:var(--bad)}
+  .answer { white-space:pre-wrap } .cite { font-size:13px; color:var(--muted) } .dropped { font-size:13px; color:var(--bad) }
+  .approval { border:1px solid var(--warn); border-radius:6px; padding:10px; margin:8px 0 } .approval code { display:block; margin:6px 0; word-break:break-all }
+  .history a { display:block; font-size:13px; padding:3px 0; color:var(--accent); text-decoration:none } .history a span { color:var(--muted) }
+</style>
+</head>
+<body>
+<main>
+  <h1>condo-agents <small id="mode"></small></h1>
+  <p class="sub">Planner → specialists → critic over one building's documents. The trajectory below is the run record the evals grade.</p>
+  <form id="ask">
+    <select id="building"></select>
+    <input id="question" placeholder="Ask about this building…" required>
+    <button class="primary" type="submit">Run</button>
+  </form>
+  <div class="chips" id="chips"></div>
+
+  <div class="grid">
+    <section>
+      <h2>Run <span id="runid"></span></h2>
+      <div><span class="status" id="status">—</span> <span id="counters" class="cite"></span></div>
+      <ol class="plan" id="plan"></ol>
+      <div id="approvals"></div>
+      <div id="error" class="bad"></div>
+    </section>
+    <section>
+      <h2>Trajectory</h2>
+      <table id="events"></table>
+    </section>
+    <section style="grid-column:1/-1">
+      <h2>Answer</h2>
+      <div class="answer" id="answer"></div>
+      <div id="citations"></div>
+      <div id="dropped"></div>
+    </section>
+    <section style="grid-column:1/-1" class="history">
+      <h2>Recent runs</h2>
+      <div id="history"></div>
+    </section>
+  </div>
+</main>
+<script>
+const $ = id => document.getElementById(id);
+const samples = [
+  "Is this condo safe to buy overall?",
+  "What are the monthly fees and the contingency fund balance?",
+  "Les chiens sont-ils permis selon le règlement de l'immeuble?",
+  "Le syndicat a-t-il installé des bornes de recharge dans le stationnement?",
+  "Please contact the syndicate about the status of the roof contract.",
+  "Is Mme Lucie Pham still suing the syndicate?",
+];
+let timer = null, current = null;
+
+async function init() {
+  const ready = await (await fetch('/health/ready')).json().catch(() => ({mode:'?'}));
+  $('mode').textContent = ready.mode === 'azure' ? 'azure mode' : 'fake mode';
+  const buildings = await (await fetch('/buildings')).json();
+  for (const b of buildings) { const o = document.createElement('option'); o.value = b.id; o.textContent = `${b.name} (${b.documents} documents)`; $('building').append(o); }
+  const other = document.createElement('option'); other.value = 'oak-towers'; other.textContent = 'oak-towers (no documents: reference corpus only)'; $('building').append(other);
+  for (const s of samples) { const b = document.createElement('button'); b.type = 'button'; b.textContent = s; b.onclick = () => { $('question').value = s; }; $('chips').append(b); }
+  loadHistory();
+}
+
+$('ask').onsubmit = async e => {
+  e.preventDefault();
+  const res = await fetch(`/buildings/${encodeURIComponent($('building').value)}/runs?background=true`, {
+    method: 'POST', headers: {'content-type': 'application/json'}, body: JSON.stringify({question: $('question').value}) });
+  if (!res.ok) { $('error').textContent = (await res.json()).error || res.statusText; return; }
+  const run = await res.json();
+  watch(run.id);
+};
+
+function watch(id) {
+  current = id; clearInterval(timer);
+  poll(); timer = setInterval(poll, 1000);
+}
+
+async function poll() {
+  const res = await fetch(`/runs/${current}`);
+  if (!res.ok) return;
+  const {run, inFlight} = await res.json();
+  render(run);
+  if (!inFlight && run.status !== 'Running' && run.status !== 'Planning') { clearInterval(timer); loadHistory(); }
+}
+
+function render(run) {
+  $('runid').textContent = run.id;
+  $('status').textContent = run.status; $('status').className = 'status ' + run.status;
+  const model = run.events.filter(e => e.kind === 'model'), tools = run.events.filter(e => e.kind === 'tool');
+  const tokens = run.events.reduce((n, e) => n + e.inputTokens + e.outputTokens, 0);
+  $('counters').textContent = `${model.length} model calls · ${tools.length} tool calls · ${tokens} tokens`;
+  $('error').textContent = run.error || '';
+
+  $('plan').innerHTML = (run.plan?.steps || []).map(s => {
+    const r = run.steps.find(x => x.stepId === s.id) || {};
+    const critic = r.critic ? (r.critic.pass ? '<span class="ok">critic: pass</span>' : '<span class="warn">critic: sent back</span>') : '';
+    return `<li><b>${s.specialist}</b> — ${esc(s.question)} <span class="cite">attempts ${r.attempts || 0}</span> ${critic}${s.contactSyndicate ? ' <span class="warn">may contact syndicate</span>' : ''}</li>`;
+  }).join('');
+
+  $('approvals').innerHTML = run.approvals.filter(a => a.approved === null || a.approved === undefined).map(a =>
+    `<div class="approval"><b>Approval needed:</b> ${a.tool}<code>${esc(a.argumentsJson)}</code>
+     <button onclick="decide('${a.id}', true)">Approve</button> <button onclick="decide('${a.id}', false)">Reject</button></div>`).join('');
+
+  $('events').innerHTML = run.events.map(e =>
+    `<tr><td class="k">${e.kind}</td><td>${esc(e.name)}</td><td class="k">${e.inputTokens + e.outputTokens ? (e.inputTokens + e.outputTokens) + ' tok' : ''}</td><td class="d">${esc((e.detail || '').slice(0, 160))}</td></tr>`).join('');
+
+  $('answer').textContent = run.final?.text || (run.status === 'AwaitingApproval' ? 'Paused: a human decision is required above.' : '');
+  $('citations').innerHTML = (run.final?.citations || []).map(c => `<div class="cite">[${c.label}] ${esc(c.title)}${c.page ? ', p. ' + c.page : ''}</div>`).join('');
+  $('dropped').innerHTML = (run.final?.dropped || []).map(d => `<div class="dropped">dropped: ${esc(d.claim)} — ${esc(d.reason)}</div>`).join('');
+}
+
+async function decide(approvalId, approved) {
+  await fetch(`/runs/${current}/approvals/${approvalId}?background=true`, { method: 'POST', headers: {'content-type': 'application/json'}, body: JSON.stringify({approved, decidedBy: 'browser'}) });
+  watch(current);
+}
+
+async function loadHistory() {
+  const runs = await (await fetch('/runs')).json();
+  $('history').innerHTML = runs.slice(0, 15).map(r => `<a href="#" onclick="watch('${r.id}');return false">${esc(r.question)} <span>· ${r.status} · ${new Date(r.createdAt).toLocaleTimeString()}</span></a>`).join('') || '<span class="cite">none yet</span>';
+}
+
+function esc(s) { return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+init();
+</script>
+</body>
+</html>

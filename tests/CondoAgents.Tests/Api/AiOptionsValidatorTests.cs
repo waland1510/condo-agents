@@ -32,4 +32,22 @@ public sealed class AiOptionsValidatorTests
 
         Assert.True(result.Succeeded);
     }
+
+    [Fact]
+    public void Refuses_an_index_name_outside_this_apps_prefix()
+    {
+        var result = _validator.Validate(null, new AiOptions
+        {
+            UseAzure = true,
+            FoundryEndpoint = "https://f",
+            ChatDeployment = "c",
+            EmbeddingDeployment = "e",
+            SearchEndpoint = "https://s",
+            SearchIndexName = "iq-benefits-index",
+            LanguageEndpoint = "https://l",
+        });
+
+        Assert.True(result.Failed);
+        Assert.Contains(result.Failures, f => f.Contains("condo-agents-", StringComparison.Ordinal));
+    }
 }

@@ -9,7 +9,7 @@ public static partial class Claims
 {
     public static IReadOnlyList<Claim> Split(AgentAnswer answer)
     {
-        if (answer.Kind != AgentAnswer.KindAnswer)
+        if (answer.Kind != AgentAnswer.KindAnswer || string.IsNullOrWhiteSpace(answer.Text))
         {
             return [];
         }

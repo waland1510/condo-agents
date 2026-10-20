@@ -13,13 +13,14 @@ public sealed record IngestRequest(
 
 public sealed record RoleFinding(string Category, string Text, int Offset, int Length, string Role, bool Redact);
 
-/// <summary>Hash covers the exact redacted text that would be indexed; the attestation binds to it, not to the document id.</summary>
+/// <summary>ScreeningHash covers the exact redacted text that would be indexed; SourceHash covers the bytes it was derived from. The attestation binds to the first, indexing checks the second, and nothing is re-screened.</summary>
 public sealed record ScreeningReport(
     string DocumentId,
     string SourceLanguage,
     IReadOnlyList<RoleFinding> Findings,
     string RedactedText,
-    string ScreeningHash)
+    string ScreeningHash,
+    string SourceHash)
 {
     public bool RequiresAttestation => Findings.Count > 0;
 }
