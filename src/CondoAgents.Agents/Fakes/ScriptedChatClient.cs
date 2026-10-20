@@ -145,12 +145,16 @@ public sealed partial class ScriptedChatClient(ScriptedChatClient.Script? script
         }
     }
 
+    /// <summary>A sentence boundary is a period or semicolon after at least 60 characters, not following an abbreviation; the fake quotes, it does not summarize.</summary>
     private static string FirstSentence(string text)
     {
-        var flat = text.Replace('\n', ' ');
-        var end = flat.IndexOfAny(['.', ';']);
-        return end > 0 && end < 220 ? flat[..(end + 1)] : flat[..Math.Min(flat.Length, 220)];
+        var flat = string.Join(' ', text.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
+        var end = SentenceEnd().Matches(flat).Select(m => m.Index).FirstOrDefault(i => i >= 60, -1);
+        return end > 0 && end < 260 ? flat[..(end + 1)] : flat[..Math.Min(flat.Length, 260)];
     }
+
+    [GeneratedRegex(@"(?<!\b(?:Art|M|Mme|Me|inc|no|art|p))[.;](?=\s+\S)")]
+    private static partial Regex SentenceEnd();
 
     private static string CallName(List<ChatMessage> messages, string callId)
         => messages.SelectMany(m => m.Contents.OfType<FunctionCallContent>()).FirstOrDefault(c => c.CallId == callId)?.Name ?? "unknown";

@@ -13,7 +13,7 @@ public sealed record RunEvent(
     string? Detail);
 
 /// <summary>Append-only record of every model and tool call in a run; the trajectory the evals assert on.</summary>
-public sealed class RunTrace
+public sealed class RunTrace(Action<RunEvent>? observer = null)
 {
     public const string ModelCall = "model";
     public const string ToolCall = "tool";
@@ -39,7 +39,9 @@ public sealed class RunTrace
     public void Record(string kind, string name, DateTimeOffset at, double durationMs, long inputTokens = 0, long outputTokens = 0, string? detail = null)
     {
         var sequence = Interlocked.Increment(ref _sequence);
-        _events.Enqueue(new RunEvent(sequence, kind, name, at, durationMs, inputTokens, outputTokens, detail));
+        var record = new RunEvent(sequence, kind, name, at, durationMs, inputTokens, outputTokens, detail);
+        _events.Enqueue(record);
+        observer?.Invoke(record);
         if (kind == ModelCall)
         {
             Interlocked.Increment(ref _modelCalls);

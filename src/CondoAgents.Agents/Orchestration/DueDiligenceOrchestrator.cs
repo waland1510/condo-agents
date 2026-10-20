@@ -22,6 +22,9 @@ public sealed class DueDiligenceOrchestrator(
 {
     public const int MaxAttemptsPerStep = 2;
 
+    /// <summary>Receives every trace event as it is recorded; for a console or a stream, not for control flow.</summary>
+    public Action<RunEvent>? Observer { get; set; }
+
     public async Task<AgentRun> StartAsync(Scope scope, string question, RunBudget? budget = null, CancellationToken ct = default)
     {
         ScopeFilter.Build(scope);
@@ -47,7 +50,7 @@ public sealed class DueDiligenceOrchestrator(
 
     public async Task<AgentRun> ContinueAsync(AgentRun run, CancellationToken ct = default)
     {
-        var trace = new RunTrace();
+        var trace = new RunTrace(Observer);
         var baseline = run.Events.Count;
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
         timeout.CancelAfter(run.Budget.Duration);

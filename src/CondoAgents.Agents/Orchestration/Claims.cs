@@ -21,7 +21,7 @@ public static partial class Claims
             .ToList();
     }
 
-    [GeneratedRegex(@"(?<=[.!?]\s*(?:\[S\d+\]\s*)*)\s+(?=\p{Lu}|\d)")]
+    [GeneratedRegex(@"(?<!\b(?:Art|M|Mme|Me|inc|no|art|p)\.)(?<!\d\.)(?<=[.!?]\s*(?:\[S\d+\]\s*)*)\s+(?=\p{Lu}|\d)")]
     private static partial Regex Sentence();
 
     [GeneratedRegex(@"\[(?<label>S\d+)\]")]

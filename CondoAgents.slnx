@@ -2,11 +2,13 @@
   <Folder Name="/src/">
     <Project Path="src/CondoAgents.Agents/CondoAgents.Agents.csproj" />
     <Project Path="src/CondoAgents.Api/CondoAgents.Api.csproj" />
+    <Project Path="src/CondoAgents.Cli/CondoAgents.Cli.csproj" />
     <Project Path="src/CondoAgents.Clients/CondoAgents.Clients.csproj" />
     <Project Path="src/CondoAgents.Corpus/CondoAgents.Corpus.csproj" />
     <Project Path="src/CondoAgents.Domain/CondoAgents.Domain.csproj" />
     <Project Path="src/CondoAgents.Evals/CondoAgents.Evals.csproj" />
     <Project Path="src/CondoAgents.Ingest/CondoAgents.Ingest.csproj" />
+    <Project Path="src/CondoAgents.Mcp/CondoAgents.Mcp.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/CondoAgents.Tests/CondoAgents.Tests.csproj" />
