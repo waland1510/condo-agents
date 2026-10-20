@@ -96,3 +96,15 @@ public sealed class FakeDependencyModeReporter : IDependencyModeReporter
 {
     public DependencyMode Mode => DependencyMode.Fake;
 }
+public sealed class RecordingMessenger : IOutboundMessenger
+{
+    private readonly List<(string Recipient, string Message)> _sent = [];
+
+    public IReadOnlyList<(string Recipient, string Message)> Sent => _sent;
+
+    public Task<string> SendAsync(string recipient, string message, CancellationToken ct = default)
+    {
+        _sent.Add((recipient, message));
+        return Task.FromResult($"msg-{_sent.Count}");
+    }
+}

@@ -6,6 +6,7 @@
     <ProjectReference Include="../CondoAgents.Clients/CondoAgents.Clients.csproj" />
     <ProjectReference Include="../CondoAgents.Corpus/CondoAgents.Corpus.csproj" />
     <ProjectReference Include="../CondoAgents.Ingest/CondoAgents.Ingest.csproj" />
+    <ProjectReference Include="../CondoAgents.Agents/CondoAgents.Agents.csproj" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" />

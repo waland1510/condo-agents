@@ -1,8 +1,12 @@
+using CondoAgents.Agents.Fakes;
+using CondoAgents.Agents.Orchestration;
+using CondoAgents.Api;
 using CondoAgents.Api.Configuration;
 using CondoAgents.Clients;
 using CondoAgents.Corpus;
 using CondoAgents.Ingest;
 
+using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Options;
 
 using OpenTelemetry.Metrics;
@@ -23,6 +27,9 @@ if (ai.UseAzure)
 
 builder.Services.AddFakeClients();
 builder.Services.AddSingleton<IngestPipeline>();
+builder.Services.AddSingleton<IChatClient, ScriptedChatClient>();
+builder.Services.AddSingleton<IRunStore>(new FileRunStore(builder.Configuration["Runs:Path"] ?? Path.Combine(builder.Environment.ContentRootPath, "runs")));
+builder.Services.AddSingleton<DueDiligenceOrchestrator>();
 
 builder.Services.AddOpenTelemetry()
     .WithTracing(t => t.AddSource(Telemetry.ServiceName).AddAspNetCoreInstrumentation().AddHttpClientInstrumentation().AddOtlpExporter())
@@ -37,6 +44,8 @@ if (dataRoot is not null)
         dataRoot, app.Services.GetRequiredService<IngestPipeline>(), app.Services.GetRequiredService<IIndexWriter>());
     app.Logger.LogInformation("Seeded {Documents} documents, {Chunks} chunks from {DataRoot}", results.Count, results.Sum(r => r.ChunkCount), dataRoot);
 }
+
+app.MapRuns();
 
 app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
 

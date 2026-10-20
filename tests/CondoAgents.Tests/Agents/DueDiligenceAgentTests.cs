@@ -60,7 +60,9 @@ public sealed class DueDiligenceAgentTests
         var looping = new LoopingChatClient(new ScriptedChatClient(script));
         var agent = new DueDiligenceAgent(looping, Fixture.Retrieval, new RegexPiiDetector(), new PermissivePromptShield());
 
-        await Assert.ThrowsAsync<BudgetExceededException>(() => agent.AskAsync(Scope, "toiture", new RunBudget(MaxModelCalls: 50, MaxToolCalls: 3), Ct));
+        var ex = await Assert.ThrowsAsync<BudgetExceededException>(() => agent.AskAsync(Scope, "toiture", new RunBudget(MaxModelCalls: 50, MaxToolCalls: 3), Ct));
+
+        Assert.Equal("tool calls", ex.What);
     }
 
     [Fact]

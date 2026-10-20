@@ -26,8 +26,17 @@ public sealed partial class ScriptedChatClient(ScriptedChatClient.Script? script
             .ToList();
         IReadOnlyList<AITool> tools = options?.Tools is { } t ? [.. t] : [];
 
+        var instructions = options?.Instructions ?? string.Empty;
         ChatMessage reply;
-        if (toolResults.Count == 0 && tools.Count > 0)
+        if (instructions.Contains("ROLE: PLANNER", StringComparison.Ordinal))
+        {
+            reply = new ChatMessage(ChatRole.Assistant, FakePlanner.PlanJson(question));
+        }
+        else if (instructions.Contains("ROLE: CRITIC", StringComparison.Ordinal))
+        {
+            reply = new ChatMessage(ChatRole.Assistant, FakeCritic.VerdictJson(question));
+        }
+        else if (toolResults.Count == 0 && tools.Count > 0)
         {
             var call = script?.FirstCall is not null ? script.FirstCall(question, tools) : DefaultFirstCall(question, tools);
             reply = call is null ? new ChatMessage(ChatRole.Assistant, AnswerJson(question, toolResults)) : new ChatMessage(ChatRole.Assistant, [call]);
@@ -66,7 +75,13 @@ public sealed partial class ScriptedChatClient(ScriptedChatClient.Script? script
 
     private static FunctionCallContent? DefaultFirstCall(string question, IReadOnlyList<AITool> tools)
     {
-        var search = tools.OfType<AIFunction>().FirstOrDefault(t => t.Name is "search_documents" or "civil_code_lookup");
+        var contact = tools.OfType<AIFunctionDeclaration>().FirstOrDefault(t => t.Name == "send_question_to_syndic");
+        if (contact is not null && question.Contains("contact the syndicate", StringComparison.OrdinalIgnoreCase))
+        {
+            return new FunctionCallContent("call-contact", contact.Name, new Dictionary<string, object?> { ["message"] = "Please confirm the current status of the roof contract and any further assessment." });
+        }
+
+        var search = tools.OfType<AIFunctionDeclaration>().FirstOrDefault(t => t.Name is "search_documents" or "civil_code_lookup");
         if (search is null)
         {
             return null;
@@ -89,6 +104,16 @@ public sealed partial class ScriptedChatClient(ScriptedChatClient.Script? script
             .SelectMany(r => ParsePassages(r.Json))
             .Take(3)
             .ToList();
+
+        var sent = toolResults.FirstOrDefault(r => r.Name == "send_question_to_syndic");
+        if (sent is not null)
+        {
+            var reference = sent.Json.Trim('"');
+            var outcome = reference.StartsWith("msg-", StringComparison.Ordinal)
+                ? $"A question was sent to the syndicate (reference {reference})."
+                : "The request to contact the syndicate was not approved, so nothing was sent.";
+            return JsonSerializer.Serialize(new { kind = "action", text = outcome, evidence = Array.Empty<string>() });
+        }
 
         if (passages.Count == 0)
         {

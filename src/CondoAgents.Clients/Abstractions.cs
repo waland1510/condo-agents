@@ -76,3 +76,8 @@ public interface IRoleAdjudicator
 {
     Task<IReadOnlyList<RoleVerdict>> AdjudicateAsync(IReadOnlyList<RoleCandidate> candidates, CancellationToken ct = default);
 }
+/// <summary>The one side effect an agent can cause outside the system; always behind an approval.</summary>
+public interface IOutboundMessenger
+{
+    Task<string> SendAsync(string recipient, string message, CancellationToken ct = default);
+}

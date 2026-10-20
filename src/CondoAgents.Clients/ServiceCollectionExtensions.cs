@@ -19,6 +19,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IDocumentTranslator, IdentityTranslator>();
         services.AddSingleton<IPromptShield, PermissivePromptShield>();
         services.AddSingleton<IDependencyModeReporter, FakeDependencyModeReporter>();
+        services.AddSingleton<IOutboundMessenger, RecordingMessenger>();
         return services;
     }
 }
