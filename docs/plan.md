@@ -35,7 +35,7 @@ Everything runs offline on in-memory fakes; Azure is a configuration switch.
 | 1 ✅ | Scaffold: solution, domain, fakes, fail-closed API, CI | `dotnet test` green with no network; CI badge green |
 | 2 ✅ | Seed data: one fictional building, FR/EN documents with seeded PII, a contradiction and a false claim; Civil Code articles | Documents checked in under `data/` with a manifest |
 | 3 ✅ | Ingest tools: translate, crack, PII with role adjudication, attest gate, index with scope metadata | Pipeline test runs end to end on fakes |
-| 4 | Single agent with scope-bound tools and budgets | Tool contract test proves scope cannot be widened; ADR 2 |
+| 4 ✅ | Single agent with scope-bound tools and budgets | Tool contract test proves scope cannot be widened; ADR 2 |
 | 5 | Planner, specialists, critic; typed plan; run persistence | Replayable run JSON; critic catches the seeded false claim |
 | 6 | Human-in-the-loop: pause, approve, resume; irreversible-tool marker | Run survives a process restart mid-approval |
 | 7 | Trajectory evals, committed results | `evals/results/*.json` and a summary table in the README |

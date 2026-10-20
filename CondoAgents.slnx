@@ -1,5 +1,6 @@
 <Solution>
   <Folder Name="/src/">
+    <Project Path="src/CondoAgents.Agents/CondoAgents.Agents.csproj" />
     <Project Path="src/CondoAgents.Api/CondoAgents.Api.csproj" />
     <Project Path="src/CondoAgents.Clients/CondoAgents.Clients.csproj" />
     <Project Path="src/CondoAgents.Corpus/CondoAgents.Corpus.csproj" />

@@ -36,16 +36,19 @@ public sealed partial class InMemoryRetrievalClient(InMemoryIndex index) : IRetr
     private static Func<IndexedChunk, bool> ParseFilter(string filter)
     {
         var building = BuildingClause().Match(filter);
-        if (!building.Success)
+        var includeReference = ReferenceClause().IsMatch(filter);
+        if (!building.Success && !includeReference)
         {
-            throw new ScopeException("Fake retrieval refuses a filter without a building clause.");
+            throw new ScopeException("Fake retrieval refuses a filter without a building or reference clause.");
         }
 
-        var buildingId = building.Groups["id"].Value;
-        var includeReference = ReferenceClause().IsMatch(filter);
-        return c => c.IsActive && (
-            (c.Corpus == ScopeFilter.BuildingCorpus && c.BuildingId == buildingId) ||
-            (includeReference && c.Corpus == ScopeFilter.ReferenceCorpus));
+        var document = DocumentClause().Match(filter);
+        var buildingId = building.Success ? building.Groups["id"].Value : null;
+        var documentId = document.Success ? document.Groups["id"].Value : null;
+        return c => c.IsActive
+            && (documentId is null || c.DocumentId == documentId)
+            && ((buildingId is not null && c.Corpus == ScopeFilter.BuildingCorpus && c.BuildingId == buildingId)
+                || (includeReference && c.Corpus == ScopeFilter.ReferenceCorpus));
     }
 
     [GeneratedRegex(@"building_id eq '(?<id>[a-z0-9-]+)' and corpus eq 'building' and is_active eq true")]
@@ -53,4 +56,7 @@ public sealed partial class InMemoryRetrievalClient(InMemoryIndex index) : IRetr
 
     [GeneratedRegex(@"corpus eq 'reference' and is_active eq true")]
     private static partial Regex ReferenceClause();
+
+    [GeneratedRegex(@"\) and document_id eq '(?<id>[a-z0-9-]+)'$")]
+    private static partial Regex DocumentClause();
 }
