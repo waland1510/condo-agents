@@ -108,7 +108,7 @@ public sealed class DueDiligenceOrchestrator(
     {
         var planner = AgentFactory.Create(model, "planner", Prompts.Planner, [], run.Budget, trace);
         var session = await planner.CreateSessionAsync(ct);
-        var response = await planner.RunAsync<Plan>(run.Question, session, cancellationToken: ct);
+        var response = await planner.RunCheckedAsync<Plan>(run.Question, session, trace, ct);
         var plan = response.Result;
         plan.Validate();
         return plan;
@@ -147,7 +147,7 @@ public sealed class DueDiligenceOrchestrator(
         }
 
         record.Attempts++;
-        var response = await agent.RunAsync(input, session, cancellationToken: ct);
+        var response = await agent.RunCheckedAsync(input, session, trace, ct);
 
         var approvals = response.Messages.SelectMany(m => m.Contents.OfType<ToolApprovalRequestContent>()).ToList();
         if (approvals.Count > 0)
@@ -213,7 +213,7 @@ public sealed class DueDiligenceOrchestrator(
             claims = claims.Select(c => new { text = c.Text, labels = c.Labels }),
             evidence = evidence.Select((e, i) => new { label = RetrievedChunk.EvidenceLabel(i), e.DocumentId, e.Text }),
         }, RunJson.Options);
-        var response = await critic.RunAsync<CriticVerdict>(payload, session, cancellationToken: ct);
+        var response = await critic.RunCheckedAsync<CriticVerdict>(payload, session, trace, ct);
         return response.Result;
     }
 

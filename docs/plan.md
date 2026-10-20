@@ -41,8 +41,9 @@ Everything runs offline on in-memory fakes; Azure is a configuration switch.
 | 4 ✅ | Single agent with scope-bound tools and budgets | Tool contract test proves scope cannot be widened; ADR 2 |
 | 5 ✅ | Planner, specialists, critic; typed plan; run persistence | Replayable run JSON; critic catches the seeded false claim |
 | 6 ✅ | Human-in-the-loop: pause, approve, resume; irreversible-tool marker | Run survives a process restart mid-approval |
-| 7 | Trajectory evals, committed results | `evals/results/*.json` and a summary table in the README |
+| 7 ✅ | Trajectory evals, committed results | `evals/results/*.json` and a summary table in the README |
 | 8 | MCP server, README diagram, reading guide, thin CLI | A reader can follow the five-minute guide without running anything |
+| 9 | Real Azure clients behind the same interfaces; env-gated eval run against the pinned model | `Ai:UseAzure=true` boots against Foundry, Search, Language and Content Safety; `evals/results/azure-*.md` committed |
 
 ## Conventions
 

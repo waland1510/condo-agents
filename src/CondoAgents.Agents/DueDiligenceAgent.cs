@@ -39,7 +39,7 @@ public sealed class DueDiligenceAgent(IChatClient model, IRetrievalClient retrie
         var toolbox = new ScopedToolbox(scope, retrieval, shield);
         var agent = AgentFactory.Create(model, Name, Instructions, toolbox.All(), budget, trace);
         var session = await agent.CreateSessionAsync(timeout.Token);
-        var response = await agent.RunAsync<AgentAnswer>(question, session, cancellationToken: timeout.Token);
+        var response = await agent.RunCheckedAsync<AgentAnswer>(question, session, trace, timeout.Token);
 
         var answer = response.Result;
         var evidence = RetrievedChunk.InEvidenceOrder(toolbox.Evidence);

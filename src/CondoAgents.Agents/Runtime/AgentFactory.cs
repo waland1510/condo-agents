@@ -8,6 +8,29 @@ namespace CondoAgents.Agents.Runtime;
 /// <summary>Builds every agent the same way: budgeted model client underneath, tool-call accounting and shielding on top.</summary>
 public static class AgentFactory
 {
+    /// <summary>The loop swallows tool exceptions as model-visible errors, so a budget violation is surfaced here, after the loop, as the exception it was.</summary>
+    public static async Task<AgentResponse> RunCheckedAsync(this AIAgent agent, IEnumerable<ChatMessage> messages, AgentSession session, RunTrace trace, CancellationToken ct)
+    {
+        var response = await agent.RunAsync(messages, session, cancellationToken: ct);
+        if (trace.Violation is { } violation)
+        {
+            throw violation;
+        }
+
+        return response;
+    }
+
+    public static async Task<AgentResponse<T>> RunCheckedAsync<T>(this AIAgent agent, string message, AgentSession session, RunTrace trace, CancellationToken ct)
+    {
+        var response = await agent.RunAsync<T>(message, session, cancellationToken: ct);
+        if (trace.Violation is { } violation)
+        {
+            throw violation;
+        }
+
+        return response;
+    }
+
     public static AIAgent Create(
         IChatClient model,
         string name,
@@ -28,7 +51,10 @@ public static class AgentFactory
             {
                 if (trace.ToolCalls >= budget.MaxToolCalls)
                 {
-                    throw new BudgetExceededException("tool calls", budget.MaxToolCalls);
+                    var violation = new BudgetExceededException("tool calls", budget.MaxToolCalls);
+                    trace.Violation ??= violation;
+                    context.Terminate = true;
+                    throw violation;
                 }
 
                 using var activity = Telemetry.Source.StartActivity("agent.tool");

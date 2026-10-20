@@ -9,6 +9,7 @@
   <ItemGroup>
     <ProjectReference Include="../../src/CondoAgents.Api/CondoAgents.Api.csproj" />
     <ProjectReference Include="../../src/CondoAgents.Agents/CondoAgents.Agents.csproj" />
+    <ProjectReference Include="../../src/CondoAgents.Evals/CondoAgents.Evals.csproj" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />

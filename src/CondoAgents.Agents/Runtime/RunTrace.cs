@@ -27,6 +27,9 @@ public sealed class RunTrace
 
     public IReadOnlyList<RunEvent> Events => [.. _events.OrderBy(e => e.Sequence)];
 
+    /// <summary>Set by the tool middleware, which cannot throw past the function-calling loop; the agent runner checks it after every run.</summary>
+    public BudgetExceededException? Violation { get; set; }
+
     public long ModelCalls => Interlocked.Read(ref _modelCalls);
 
     public long ToolCalls => Interlocked.Read(ref _toolCalls);
