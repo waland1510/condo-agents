@@ -1,4 +1,5 @@
 using CondoAgents.Clients.Fakes;
+using CondoAgents.Domain.Retrieval;
 
 using Microsoft.Extensions.DependencyInjection;
 

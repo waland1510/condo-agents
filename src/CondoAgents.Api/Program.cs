@@ -1,5 +1,6 @@
 using CondoAgents.Api.Configuration;
 using CondoAgents.Clients;
+using CondoAgents.Corpus;
 
 using Microsoft.Extensions.Options;
 
@@ -19,7 +20,8 @@ if (ai.UseAzure)
     throw new NotSupportedException("Azure clients are not wired yet; run with Ai:UseAzure=false in Development.");
 }
 
-builder.Services.AddFakeClients();
+var dataRoot = builder.Configuration["Corpus:Path"] ?? CorpusLoader.FindDataRoot(builder.Environment.ContentRootPath);
+builder.Services.AddFakeClients(dataRoot is null ? null : CorpusLoader.LoadChunks(dataRoot));
 
 builder.Services.AddOpenTelemetry()
     .WithTracing(t => t.AddAspNetCoreInstrumentation().AddHttpClientInstrumentation().AddOtlpExporter())

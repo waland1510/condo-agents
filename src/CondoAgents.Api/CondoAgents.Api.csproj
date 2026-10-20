@@ -4,6 +4,7 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="../CondoAgents.Clients/CondoAgents.Clients.csproj" />
+    <ProjectReference Include="../CondoAgents.Corpus/CondoAgents.Corpus.csproj" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" />

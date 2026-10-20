@@ -51,13 +51,3 @@ public sealed partial class InMemoryRetrievalClient(IEnumerable<IndexedChunk> ch
     [GeneratedRegex(@"corpus eq 'reference' and is_active eq true")]
     private static partial Regex ReferenceClause();
 }
-
-public sealed record IndexedChunk(
-    string ChunkId,
-    string DocumentId,
-    string Title,
-    string Corpus,
-    string? BuildingId,
-    string Text,
-    int? Page = null,
-    bool IsActive = true);

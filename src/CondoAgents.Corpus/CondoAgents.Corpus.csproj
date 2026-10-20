@@ -1,0 +1,8 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <RootNamespace>CondoAgents.Corpus</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../CondoAgents.Domain/CondoAgents.Domain.csproj" />
+  </ItemGroup>
+</Project>

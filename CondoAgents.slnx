@@ -2,6 +2,7 @@
   <Folder Name="/src/">
     <Project Path="src/CondoAgents.Api/CondoAgents.Api.csproj" />
     <Project Path="src/CondoAgents.Clients/CondoAgents.Clients.csproj" />
+    <Project Path="src/CondoAgents.Corpus/CondoAgents.Corpus.csproj" />
     <Project Path="src/CondoAgents.Domain/CondoAgents.Domain.csproj" />
   </Folder>
   <Folder Name="/tests/">

@@ -1,0 +1,38 @@
+{
+  "building": "jardins-plateau",
+  "pii": [
+    { "document": "agm-minutes-2023", "text": "Geneviève Tremblay-Rousseau", "category": "Person", "role": "owner", "expect": "redact" },
+    { "document": "agm-minutes-2023", "text": "Karim Benhaddou", "category": "Person", "role": "owner", "expect": "redact" },
+    { "document": "agm-minutes-2023", "text": "k.benhaddou@exemple.net", "category": "Email", "role": "owner", "expect": "redact" },
+    { "document": "agm-minutes-2023", "text": "514-555-0142", "category": "PhoneNumber", "role": "owner", "expect": "redact" },
+    { "document": "agm-minutes-2023", "text": "Réjean Lafontaine", "category": "Person", "role": "owner", "expect": "redact" },
+    { "document": "agm-minutes-2025", "text": "Lucie Pham", "category": "Person", "role": "owner", "expect": "redact" },
+    { "document": "agm-minutes-2023", "text": "Daniel Côté", "category": "Person", "role": "professional", "expect": "keep" },
+    { "document": "agm-minutes-2023", "text": "dcote@gib-exemple.ca", "category": "Email", "role": "professional", "expect": "keep" },
+    { "document": "agm-minutes-2025", "text": "Sébastien Larocque", "category": "Person", "role": "professional", "expect": "keep" },
+    { "document": "reserve-fund-study-2022", "text": "Marc-André Bélanger", "category": "Person", "role": "professional", "expect": "keep" }
+  ],
+  "contradictions": [
+    { "topic": "pets", "documents": ["bylaws-2019", "bylaws-2024"], "values": ["forbidden", "one dog or cat under 15 kg, registered"], "current": "bylaws-2024" },
+    { "topic": "contingency fund contribution", "documents": ["bylaws-2019", "bylaws-2024"], "values": ["5 %", "10 % or the study's recommendation if higher"], "current": "bylaws-2024" },
+    { "topic": "roof replacement cost", "documents": ["agm-minutes-2023", "agm-minutes-2025", "reserve-fund-study-2022"], "values": ["450 000 $ (assessment)", "468 000 $ to 512 000 $ (bids)", "480 000 $ (study)"], "current": "agm-minutes-2025" }
+  ],
+  "lures": [
+    { "document": "agm-minutes-2025", "claim": "The syndicate installed electric vehicle charging stations in the garage.", "truth": "Resolution 2025-03 proposing 12 charging stations for 120 000 $ was rejected 11 to 17.", "marker": "REJETÉE" },
+    { "document": "agm-minutes-2025", "claim": "The roof replacement contract has been awarded.", "truth": "Three bids were received; the board recommended waiting for the engineer's analysis before awarding.", "marker": "avant d'octroyer" }
+  ],
+  "facts": [
+    { "key": "contingency_fund_balance_2024_12_31", "value": "318 450 $", "documents": ["financial-statements-2024", "agm-minutes-2025"] },
+    { "key": "special_assessment_roof_total", "value": "450 000 $", "documents": ["agm-minutes-2023", "financial-statements-2024"] },
+    { "key": "special_assessment_roof_instalments", "value": "three equal instalments, May 1 2024, 2025, 2026", "documents": ["agm-minutes-2023", "financial-statements-2024"] },
+    { "key": "special_assessment_share_2083", "value": "9 375 $", "documents": ["agm-minutes-2023"] },
+    { "key": "monthly_fees_2083_fraction_2025", "value": "412 $", "documents": ["financial-statements-2024"] },
+    { "key": "water_damage_deductible", "value": "25 000 $", "documents": ["agm-minutes-2023", "financial-statements-2024", "agm-minutes-2025"] },
+    { "key": "receivables_2024_12_31", "value": "21 300 $", "documents": ["financial-statements-2024", "agm-minutes-2025"] },
+    { "key": "litigation_claim", "value": "85 000 $ water infiltration claim, unit 408, served March 2025", "documents": ["agm-minutes-2025", "financial-statements-2024"] },
+    { "key": "reserve_study_target_2031", "value": "1 250 000 $", "documents": ["reserve-fund-study-2022", "agm-minutes-2025"] },
+    { "key": "reserve_study_recommended_contribution", "value": "96 000 $ per year from 2023, indexed 3 %", "documents": ["reserve-fund-study-2022"] },
+    { "key": "contingency_contributions_2024", "value": "51 260 $", "documents": ["financial-statements-2024"] },
+    { "key": "short_term_rental", "value": "forbidden under 12 months, online platforms expressly forbidden", "documents": ["bylaws-2024"] }
+  ]
+}

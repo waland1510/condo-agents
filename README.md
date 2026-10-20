@@ -13,9 +13,10 @@ answer each part through tools that carry their access scope with them, a
 critic agent checks every claim against the evidence, and a human approves
 anything irreversible.
 
-Status: step 1 of the [plan](docs/plan.md). The scaffold, the scope boundary,
-citation validation, fail-closed configuration and the offline fakes are in
-place and tested. Agents come next.
+Status: step 2 of the [plan](docs/plan.md). The scaffold, the scope boundary,
+citation validation, fail-closed configuration, the offline fakes and a
+synthetic corpus with declared traps are in place and tested. The ingest
+tools and the first agent come next.
 
 ## Run
 
@@ -38,13 +39,18 @@ instead of serving canned answers behind a healthy probe.
 4. `src/CondoAgents.Clients/Fakes/`: the offline implementations. The
    in-memory retrieval client honours the same filter as Azure AI Search, so
    a scope test means the same thing in both modes.
+5. [data/seeds.json](data/seeds.json): the PII, contradictions, lures and
+   facts planted in the fictional building's documents
+   ([ADR 3](docs/adr/0003-synthetic-corpus-with-declared-seeds.md)).
 
 ## Layout
 
 ```
 src/CondoAgents.Domain      scope, retrieval and citation types; no dependencies
 src/CondoAgents.Clients     external-service abstractions and their fakes
+src/CondoAgents.Corpus      manifest, chunker and loader for the checked-in documents
 src/CondoAgents.Api         minimal API, configuration validation, telemetry
 tests/CondoAgents.Tests     xUnit v3 on Microsoft.Testing.Platform
+data/                       one fictional building (FR/EN) and the Civil Code reference corpus
 docs/adr                    architecture decision records
 ```

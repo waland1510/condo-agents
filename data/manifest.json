@@ -1,0 +1,21 @@
+{
+  "buildings": [
+    {
+      "id": "jardins-plateau",
+      "name": "Les Jardins du Plateau",
+      "address": "3450, rue des Érables fictifs, Montréal",
+      "units": 48,
+      "documents": [
+        { "id": "bylaws-2019", "file": "buildings/jardins-plateau/bylaws-2019.fr.txt", "title": "Règlement de l'immeuble (2019)", "kind": "bylaws", "language": "fr", "year": 2019, "supersededBy": "bylaws-2024" },
+        { "id": "bylaws-2024", "file": "buildings/jardins-plateau/bylaws-2024.fr.txt", "title": "Règlement de l'immeuble, version modifiée (2024)", "kind": "bylaws", "language": "fr", "year": 2024 },
+        { "id": "agm-minutes-2023", "file": "buildings/jardins-plateau/agm-minutes-2023.fr.txt", "title": "Procès-verbal de l'assemblée annuelle 2023", "kind": "minutes", "language": "fr", "year": 2023 },
+        { "id": "agm-minutes-2025", "file": "buildings/jardins-plateau/agm-minutes-2025.fr.txt", "title": "Procès-verbal de l'assemblée annuelle 2025", "kind": "minutes", "language": "fr", "year": 2025 },
+        { "id": "financial-statements-2024", "file": "buildings/jardins-plateau/financial-statements-2024.en.txt", "title": "Financial statements 2024", "kind": "financials", "language": "en", "year": 2024 },
+        { "id": "reserve-fund-study-2022", "file": "buildings/jardins-plateau/reserve-fund-study-2022.fr.txt", "title": "Étude du fonds de prévoyance (2022)", "kind": "reserve-study", "language": "fr", "year": 2022 }
+      ]
+    }
+  ],
+  "reference": [
+    { "id": "ccq-divided-co-ownership", "file": "reference/ccq/articles.en.txt", "title": "Civil Code of Québec, divided co-ownership (condensed)", "kind": "statute", "language": "en", "year": 2024 }
+  ]
+}
