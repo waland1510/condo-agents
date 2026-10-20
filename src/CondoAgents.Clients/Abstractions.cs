@@ -51,3 +51,28 @@ public interface IDependencyModeReporter
 {
     DependencyMode Mode { get; }
 }
+/// <summary>Writes go through the same chunk shape retrieval reads, so a scope field can never be missing from an indexed chunk.</summary>
+public interface IIndexWriter
+{
+    Task UpsertAsync(IReadOnlyList<IndexedChunk> chunks, CancellationToken ct = default);
+
+    Task DeactivateAsync(string documentId, CancellationToken ct = default);
+}
+
+public sealed record RoleCandidate(string Id, string Category, string Text, string Context);
+
+/// <summary>Only Professional or Director spares a finding; anything else, including an unknown verdict, redacts.</summary>
+public sealed record RoleVerdict(string Id, string Role)
+{
+    public const string Owner = "owner";
+    public const string Professional = "professional";
+    public const string Director = "director";
+    public const string Unknown = "unknown";
+
+    public bool Keep => Role is Professional or Director;
+}
+
+public interface IRoleAdjudicator
+{
+    Task<IReadOnlyList<RoleVerdict>> AdjudicateAsync(IReadOnlyList<RoleCandidate> candidates, CancellationToken ct = default);
+}

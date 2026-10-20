@@ -4,6 +4,7 @@
     <Project Path="src/CondoAgents.Clients/CondoAgents.Clients.csproj" />
     <Project Path="src/CondoAgents.Corpus/CondoAgents.Corpus.csproj" />
     <Project Path="src/CondoAgents.Domain/CondoAgents.Domain.csproj" />
+    <Project Path="src/CondoAgents.Ingest/CondoAgents.Ingest.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/CondoAgents.Tests/CondoAgents.Tests.csproj" />

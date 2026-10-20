@@ -1,6 +1,7 @@
 using CondoAgents.Api.Configuration;
 using CondoAgents.Clients;
 using CondoAgents.Corpus;
+using CondoAgents.Ingest;
 
 using Microsoft.Extensions.Options;
 
@@ -20,14 +21,22 @@ if (ai.UseAzure)
     throw new NotSupportedException("Azure clients are not wired yet; run with Ai:UseAzure=false in Development.");
 }
 
-var dataRoot = builder.Configuration["Corpus:Path"] ?? CorpusLoader.FindDataRoot(builder.Environment.ContentRootPath);
-builder.Services.AddFakeClients(dataRoot is null ? null : CorpusLoader.LoadChunks(dataRoot));
+builder.Services.AddFakeClients();
+builder.Services.AddSingleton<IngestPipeline>();
 
 builder.Services.AddOpenTelemetry()
-    .WithTracing(t => t.AddAspNetCoreInstrumentation().AddHttpClientInstrumentation().AddOtlpExporter())
-    .WithMetrics(m => m.AddAspNetCoreInstrumentation().AddOtlpExporter());
+    .WithTracing(t => t.AddSource(Telemetry.ServiceName).AddAspNetCoreInstrumentation().AddHttpClientInstrumentation().AddOtlpExporter())
+    .WithMetrics(m => m.AddMeter(Telemetry.ServiceName).AddAspNetCoreInstrumentation().AddOtlpExporter());
 
 var app = builder.Build();
+
+var dataRoot = app.Configuration["Corpus:Path"] ?? CorpusLoader.FindDataRoot(app.Environment.ContentRootPath);
+if (dataRoot is not null)
+{
+    var results = await CorpusIngestor.IngestAllAsync(
+        dataRoot, app.Services.GetRequiredService<IngestPipeline>(), app.Services.GetRequiredService<IIndexWriter>());
+    app.Logger.LogInformation("Seeded {Documents} documents, {Chunks} chunks from {DataRoot}", results.Count, results.Sum(r => r.ChunkCount), dataRoot);
+}
 
 app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
 
@@ -37,6 +46,6 @@ app.MapGet("/health/ready", (IDependencyModeReporter mode, IHostEnvironment env)
     return payload.status == "ready" ? Results.Ok(payload) : Results.Json(payload, statusCode: StatusCodes.Status503ServiceUnavailable);
 });
 
-app.Run();
+await app.RunAsync();
 
 public partial class Program;

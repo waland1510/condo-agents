@@ -6,9 +6,12 @@ using CondoAgents.Domain.Scoping;
 namespace CondoAgents.Clients.Fakes;
 
 /// <summary>Honours the scope filter so a scope test passes or fails the same way offline as against Azure.</summary>
-public sealed partial class InMemoryRetrievalClient(IEnumerable<IndexedChunk> chunks) : IRetrievalClient
+public sealed partial class InMemoryRetrievalClient(InMemoryIndex index) : IRetrievalClient
 {
-    private readonly List<IndexedChunk> _chunks = [.. chunks];
+    public InMemoryRetrievalClient(IEnumerable<IndexedChunk> chunks)
+        : this(new InMemoryIndex(chunks))
+    {
+    }
 
     public Task<IReadOnlyList<RetrievedChunk>> RetrieveAsync(string query, string filter, int top = 8, CancellationToken ct = default)
     {
@@ -17,7 +20,7 @@ public sealed partial class InMemoryRetrievalClient(IEnumerable<IndexedChunk> ch
             .Select(t => t.ToLowerInvariant())
             .ToArray();
 
-        var hits = _chunks
+        var hits = index.Snapshot()
             .Where(allowed)
             .Select(c => (Chunk: c, Score: terms.Count(t => c.Text.Contains(t, StringComparison.OrdinalIgnoreCase))))
             .Where(x => x.Score > 0 || terms.Length == 0)
